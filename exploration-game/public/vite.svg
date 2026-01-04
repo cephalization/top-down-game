@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- Game controller / exploration icon -->
+  <rect x="8" y="20" width="48" height="32" rx="8" fill="#4ade80"/>
+  <circle cx="24" cy="36" r="8" fill="#166534"/>
+  <circle cx="40" cy="36" r="4" fill="#22c55e"/>
+  <circle cx="48" cy="28" r="4" fill="#22c55e"/>
+  <!-- Compass indicator -->
+  <polygon points="32,4 28,16 32,12 36,16" fill="#fbbf24"/>
+</svg>
