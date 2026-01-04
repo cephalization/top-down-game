@@ -3,6 +3,10 @@ import { GameCanvas, HUD, Controls, SeedInput } from './components';
 import { Game } from './game/Game';
 import './App.css';
 
+const CONFIG = {
+  seed: 12345
+}
+
 function App() {
   const [game, setGame] = useState<Game | null>(null);
 
@@ -13,7 +17,7 @@ function App() {
   return (
     <div className="app">
       <GameCanvas 
-        config={{ seed: 12345 }} 
+        config={CONFIG} 
         onGameReady={handleGameReady} 
       />
       <HUD game={game} />
