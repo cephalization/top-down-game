@@ -1,6 +1,6 @@
 procs:
   client:
-    cmd: ["npm", "run", "dev"]
+    cmd: ["bun", "run", "dev"]
     cwd: "."
     stop: "SIGTERM"
 
