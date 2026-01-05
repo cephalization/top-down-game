@@ -69,11 +69,23 @@ const PORT = parseInt(process.env.PORT || '3001', 10);
 
 console.log(`[Server] Starting WebSocket server on port ${PORT}...`);
 
+// CORS headers for cross-origin requests
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+};
+
 const server = Bun.serve<WebSocketData>({
   port: PORT,
   
   fetch(req, server) {
     const url = new URL(req.url);
+    
+    // Handle CORS preflight
+    if (req.method === 'OPTIONS') {
+      return new Response(null, { headers: corsHeaders });
+    }
     
     // Health check endpoint
     if (url.pathname === '/health') {
@@ -82,7 +94,7 @@ const server = Bun.serve<WebSocketData>({
         rooms: rooms.size,
         uptime: process.uptime(),
       }), {
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
       });
     }
     
@@ -90,7 +102,7 @@ const server = Bun.serve<WebSocketData>({
     if (url.pathname === '/rooms') {
       const roomList = Array.from(rooms.values()).map(r => r.getInfo());
       return new Response(JSON.stringify(roomList), {
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
       });
     }
     
@@ -102,6 +114,8 @@ const server = Bun.serve<WebSocketData>({
       // Generate player ID
       const playerId = crypto.randomUUID();
       
+      console.log(`[Server] WebSocket upgrade request from ${req.headers.get('origin') || 'unknown origin'}`);
+      
       const upgraded = server.upgrade(req, {
         data: {
           playerId,
@@ -111,7 +125,8 @@ const server = Bun.serve<WebSocketData>({
       });
       
       if (!upgraded) {
-        return new Response('WebSocket upgrade failed', { status: 500 });
+        console.error('[Server] WebSocket upgrade failed');
+        return new Response('WebSocket upgrade failed', { status: 500, headers: corsHeaders });
       }
       
       return undefined;
@@ -135,7 +150,7 @@ const server = Bun.serve<WebSocketData>({
         </body>
       </html>
     `, {
-      headers: { 'Content-Type': 'text/html' },
+      headers: { 'Content-Type': 'text/html', ...corsHeaders },
     });
   },
   

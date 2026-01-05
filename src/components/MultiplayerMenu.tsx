@@ -11,6 +11,12 @@ interface MultiplayerMenuProps {
   onStart: (config: MultiplayerConfig) => void;
 }
 
+// Get default WebSocket URL (uses Vite proxy in dev)
+function getDefaultServerUrl(): string {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${protocol}//${window.location.host}/ws`;
+}
+
 /**
  * Menu for selecting game mode and entering multiplayer details
  */
@@ -18,7 +24,7 @@ export function MultiplayerMenu({ onStart }: MultiplayerMenuProps) {
   const [mode, setMode] = useState<'singleplayer' | 'multiplayer'>('singleplayer');
   const [displayName, setDisplayName] = useState('Player');
   const [roomCode, setRoomCode] = useState('');
-  const [serverUrl, setServerUrl] = useState('ws://localhost:3001/ws');
+  const [serverUrl, setServerUrl] = useState(getDefaultServerUrl);
 
   const handleStart = () => {
     onStart({
