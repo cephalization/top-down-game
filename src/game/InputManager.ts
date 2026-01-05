@@ -1,4 +1,4 @@
-import type { Vector2, InputState } from '../types';
+import type { Vector2, InputState } from "../types";
 
 /**
  * Handles all keyboard and mouse input
@@ -15,14 +15,18 @@ export class InputManager {
 
   // Key bindings (can be customized)
   readonly bindings = {
-    moveUp: ['w', 'W', 'ArrowUp'],
-    moveDown: ['s', 'S', 'ArrowDown'],
-    moveLeft: ['a', 'A', 'ArrowLeft'],
-    moveRight: ['d', 'D', 'ArrowRight'],
-    interact: ['e', 'E', ' '],
-    pause: ['Escape', 'p', 'P'],
-    sprint: ['Shift'],
+    moveUp: ["w", "W", "ArrowUp"],
+    moveDown: ["s", "S", "ArrowDown"],
+    moveLeft: ["a", "A", "ArrowLeft"],
+    moveRight: ["d", "D", "ArrowRight"],
+    interact: ["e", "E", " "],
+    pause: ["Escape", "p", "P"],
+    sprint: ["Shift"],
+    debug: ["d", "D"],
   };
+
+  // Track Ctrl key state
+  private ctrlPressed: boolean = false;
 
   constructor() {
     this.handleKeyDown = this.handleKeyDown.bind(this);
@@ -38,41 +42,47 @@ export class InputManager {
    */
   initialize(canvas: HTMLCanvasElement): void {
     this.canvas = canvas;
-    
-    window.addEventListener('keydown', this.handleKeyDown);
-    window.addEventListener('keyup', this.handleKeyUp);
-    canvas.addEventListener('mousemove', this.handleMouseMove);
-    canvas.addEventListener('mousedown', this.handleMouseDown);
-    canvas.addEventListener('mouseup', this.handleMouseUp);
-    canvas.addEventListener('contextmenu', this.handleContextMenu);
+
+    window.addEventListener("keydown", this.handleKeyDown);
+    window.addEventListener("keyup", this.handleKeyUp);
+    canvas.addEventListener("mousemove", this.handleMouseMove);
+    canvas.addEventListener("mousedown", this.handleMouseDown);
+    canvas.addEventListener("mouseup", this.handleMouseUp);
+    canvas.addEventListener("contextmenu", this.handleContextMenu);
   }
 
   /**
    * Clean up input listeners
    */
   destroy(): void {
-    window.removeEventListener('keydown', this.handleKeyDown);
-    window.removeEventListener('keyup', this.handleKeyUp);
-    
+    window.removeEventListener("keydown", this.handleKeyDown);
+    window.removeEventListener("keyup", this.handleKeyUp);
+
     if (this.canvas) {
-      this.canvas.removeEventListener('mousemove', this.handleMouseMove);
-      this.canvas.removeEventListener('mousedown', this.handleMouseDown);
-      this.canvas.removeEventListener('mouseup', this.handleMouseUp);
-      this.canvas.removeEventListener('contextmenu', this.handleContextMenu);
+      this.canvas.removeEventListener("mousemove", this.handleMouseMove);
+      this.canvas.removeEventListener("mousedown", this.handleMouseDown);
+      this.canvas.removeEventListener("mouseup", this.handleMouseUp);
+      this.canvas.removeEventListener("contextmenu", this.handleContextMenu);
     }
   }
 
   private handleKeyDown(event: KeyboardEvent): void {
     this.state.keys.add(event.key);
+    if (event.key === "Control") {
+      this.ctrlPressed = true;
+    }
   }
 
   private handleKeyUp(event: KeyboardEvent): void {
     this.state.keys.delete(event.key);
+    if (event.key === "Control") {
+      this.ctrlPressed = false;
+    }
   }
 
   private handleMouseMove(event: MouseEvent): void {
     if (!this.canvas) return;
-    
+
     const rect = this.canvas.getBoundingClientRect();
     this.state.mousePosition = {
       x: event.clientX - rect.left,
@@ -103,7 +113,7 @@ export class InputManager {
    * Check if any of the keys for an action are pressed
    */
   isActionPressed(action: keyof typeof this.bindings): boolean {
-    return this.bindings[action].some(key => this.state.keys.has(key));
+    return this.bindings[action].some((key) => this.state.keys.has(key));
   }
 
   /**
@@ -113,10 +123,13 @@ export class InputManager {
     let x = 0;
     let y = 0;
 
-    if (this.isActionPressed('moveUp')) y -= 1;
-    if (this.isActionPressed('moveDown')) y += 1;
-    if (this.isActionPressed('moveLeft')) x -= 1;
-    if (this.isActionPressed('moveRight')) x += 1;
+    // If Ctrl is not pressed, use WASD keys for movement
+    if (!this.isCtrlPressed()) {
+      if (this.isActionPressed("moveUp")) y -= 1;
+      if (this.isActionPressed("moveDown")) y += 1;
+      if (this.isActionPressed("moveLeft")) x -= 1;
+      if (this.isActionPressed("moveRight")) x += 1;
+    }
 
     // Normalize diagonal movement
     if (x !== 0 && y !== 0) {
@@ -132,7 +145,7 @@ export class InputManager {
    * Check if sprinting
    */
   isSprinting(): boolean {
-    return this.isActionPressed('sprint');
+    return this.isActionPressed("sprint");
   }
 
   /**
@@ -155,5 +168,19 @@ export class InputManager {
    */
   getPressedKeys(): string[] {
     return Array.from(this.state.keys);
+  }
+
+  /**
+   * Check if Ctrl key is pressed
+   */
+  isCtrlPressed(): boolean {
+    return this.ctrlPressed;
+  }
+
+  /**
+   * Check if debug toggle (Ctrl+D) is pressed
+   */
+  isDebugTogglePressed(): boolean {
+    return this.ctrlPressed && this.isActionPressed("debug");
   }
 }

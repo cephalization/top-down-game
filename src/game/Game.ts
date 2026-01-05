@@ -6,6 +6,7 @@ import { World } from '../world/World';
 import { Player } from '../entities/Player';
 import { Renderer } from '../rendering/Renderer';
 import { Rect } from '../utils/math';
+import { DebugPanel } from './DebugPanel';
 
 export interface GameCallbacks {
   onUpdate?: (deltaTime: number) => void;
@@ -25,6 +26,7 @@ export class Game {
   private player: Player;
   private renderer: Renderer;
   private callbacks: GameCallbacks;
+  private debugPanel: DebugPanel;
 
   private isRunning: boolean = false;
   private isPaused: boolean = false;
@@ -35,6 +37,13 @@ export class Game {
   private fps: number = 0;
   private frameCount: number = 0;
   private fpsTime: number = 0;
+  private frameTime: number = 0;
+  private minFps: number = Infinity;
+  private maxFps: number = 0;
+  private frameTimes: number[] = [];
+
+  // Debug toggle
+  private debugToggleDebounce: boolean = false;
 
   constructor(canvas: HTMLCanvasElement, config: Partial<GameConfig> = {}, callbacks: GameCallbacks = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -47,6 +56,7 @@ export class Game {
     this.world = new World(this.config);
     this.player = new Player({ x: 0, y: 0 }, this.config.playerSpeed);
     this.renderer = new Renderer(canvas, this.camera);
+    this.debugPanel = new DebugPanel();
 
     // Bind methods
     this.gameLoop = this.gameLoop.bind(this);
@@ -91,6 +101,7 @@ export class Game {
 
     window.removeEventListener('resize', this.handleResize);
     this.inputManager.destroy();
+    this.debugPanel.dispose();
   }
 
   /**
@@ -135,13 +146,60 @@ export class Game {
     const deltaTime = Math.min((currentTime - this.lastTime) / 1000, 0.1); // Cap at 100ms
     this.lastTime = currentTime;
 
+    // Track frame time for debug overlay
+    this.frameTime = deltaTime * 1000; // Convert to ms
+    this.frameTimes.push(this.frameTime);
+    if (this.frameTimes.length > 60) {
+      this.frameTimes.shift();
+    }
+
     // FPS calculation
     this.frameCount++;
     this.fpsTime += deltaTime;
     if (this.fpsTime >= 1) {
       this.fps = this.frameCount;
+      this.minFps = Math.min(this.minFps, this.fps);
+      this.maxFps = Math.max(this.maxFps, this.fps);
       this.frameCount = 0;
       this.fpsTime = 0;
+    }
+
+    // Check for debug toggle (Ctrl+D)
+    if (this.inputManager.isDebugTogglePressed()) {
+      if (!this.debugToggleDebounce) {
+        this.debugPanel.toggle();
+        this.debugToggleDebounce = true;
+      }
+    } else {
+      this.debugToggleDebounce = false;
+    }
+
+    // Update debug panel stats
+    if (this.debugPanel.isVisible()) {
+      const avgFrameTime = this.frameTimes.length > 0
+        ? this.frameTimes.reduce((a, b) => a + b, 0) / this.frameTimes.length
+        : 0;
+      const playerPos = this.player.getPosition();
+      const cameraPos = this.camera.getPosition();
+      const viewport = this.camera.getViewport();
+
+      this.debugPanel.updateStats({
+        fps: this.fps,
+        frameTime: this.frameTime,
+        avgFrameTime,
+        minFps: this.minFps === Infinity ? 0 : this.minFps,
+        maxFps: this.maxFps,
+        chunks: this.world.getLoadedChunks().length,
+        entities: this.world.getEntities().length,
+        seed: this.config.seed,
+        playerX: playerPos.x,
+        playerY: playerPos.y,
+        cameraX: cameraPos.x,
+        cameraY: cameraPos.y,
+        zoom: this.camera.getZoom(),
+        viewportWidth: viewport.width,
+        viewportHeight: viewport.height,
+      });
     }
 
     // Check for pause toggle
@@ -229,11 +287,19 @@ export class Game {
     const { width, height } = this.renderer.getDimensions();
     this.renderer.renderMinimap(this.world, this.player, width - 160, 10, 150);
 
-    // Render FPS
     const ctx = this.renderer.getContext();
-    ctx.fillStyle = 'white';
-    ctx.font = '12px monospace';
-    ctx.fillText(`FPS: ${this.fps}`, 10, height - 10);
+
+    // Render simple FPS counter when debug panel is hidden
+    if (!this.debugPanel.isVisible()) {
+      ctx.fillStyle = 'white';
+      ctx.font = '12px monospace';
+      ctx.fillText(`FPS: ${this.fps}`, 10, height - 10);
+    } else {
+      // Show hint when debug is visible
+      ctx.fillStyle = '#888888';
+      ctx.font = '11px monospace';
+      ctx.fillText('Press Ctrl+D to hide debug panel', 10, height - 10);
+    }
 
     // Render pause overlay
     if (this.isPaused) {
@@ -311,5 +377,39 @@ export class Game {
     this.player.setPosition({ x: 0, y: 0 });
     this.camera.snapToTarget(this.player.getCenter());
     this.world.update(this.player.getPosition());
+  }
+
+  /**
+   * Toggle debug panel
+   */
+  toggleDebug(): void {
+    this.debugPanel.toggle();
+  }
+
+  /**
+   * Check if debug panel is visible
+   */
+  isDebugEnabled(): boolean {
+    return this.debugPanel.isVisible();
+  }
+
+  /**
+   * Get the debug panel for adding custom tweaks
+   * Usage:
+   *   const panel = game.getDebugPanel();
+   *   const tweaks = panel.getTweaksFolder();
+   *   tweaks.addBinding(myObject, 'speed', { min: 0, max: 100 });
+   */
+  getDebugPanel(): DebugPanel {
+    return this.debugPanel;
+  }
+
+  /**
+   * Reset performance stats
+   */
+  resetPerformanceStats(): void {
+    this.minFps = Infinity;
+    this.maxFps = 0;
+    this.frameTimes = [];
   }
 }
