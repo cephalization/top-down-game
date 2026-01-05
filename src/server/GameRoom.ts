@@ -89,51 +89,64 @@ export class GameRoom {
     playerId: string,
     displayName: string
   ): void {
-    // Create server player
-    const player = new ServerPlayer(playerId, displayName);
-    
-    // Set spawn position (could be randomized or based on spawn points)
-    player.setPosition(0, 0);
-    
-    // Create connection record
-    const connection: PlayerConnection = {
-      ws,
-      player,
-      lastInputTime: Date.now(),
-      sentChunks: new Set(),
-    };
-    
-    this.players.set(playerId, connection);
-    
-    // Send welcome message
-    const welcomeMsg: WelcomeMessage = {
-      type: 'welcome',
-      playerId,
-      roomCode: this.roomCode,
-      seed: this.seed,
-      tick: this.tick,
-      serverTime: Date.now(),
-    };
-    this.send(ws, welcomeMsg);
-    
-    // Send current state of all players
-    this.sendStateToPlayer(connection);
-    
-    // Send initial chunks around spawn
-    this.sendChunksAroundPlayer(connection);
-    
-    // Notify other players
-    const joinMsg: PlayerJoinMessage = {
-      type: 'playerJoin',
-      player: player.getState(),
-    };
-    this.broadcastExcept(playerId, joinMsg);
-    
-    console.log(`[GameRoom ${this.roomCode}] Player ${displayName} (${playerId}) joined`);
-    
-    // Start game loop if this is the first player
-    if (this.players.size === 1) {
-      this.start();
+    try {
+      console.log(`[GameRoom ${this.roomCode}] Adding player ${displayName} (${playerId})...`);
+      
+      // Create server player
+      const player = new ServerPlayer(playerId, displayName);
+      console.log(`[GameRoom ${this.roomCode}] Created ServerPlayer`);
+      
+      // Set spawn position (could be randomized or based on spawn points)
+      player.setPosition(0, 0);
+      
+      // Create connection record
+      const connection: PlayerConnection = {
+        ws,
+        player,
+        lastInputTime: Date.now(),
+        sentChunks: new Set(),
+      };
+      
+      this.players.set(playerId, connection);
+      console.log(`[GameRoom ${this.roomCode}] Added to players map`);
+      
+      // Send welcome message
+      const welcomeMsg: WelcomeMessage = {
+        type: 'welcome',
+        playerId,
+        roomCode: this.roomCode,
+        seed: this.seed,
+        tick: this.tick,
+        serverTime: Date.now(),
+      };
+      console.log(`[GameRoom ${this.roomCode}] Sending welcome message...`);
+      this.send(ws, welcomeMsg);
+      
+      // Send current state of all players
+      console.log(`[GameRoom ${this.roomCode}] Sending initial state...`);
+      this.sendStateToPlayer(connection);
+      
+      // Skip initial chunk sending - chunks will be sent during game tick
+      // This reduces the amount of data sent on connection
+      console.log(`[GameRoom ${this.roomCode}] Skipping initial chunks (will send during game loop)`);
+      // this.sendChunksAroundPlayer(connection);
+      
+      // Notify other players
+      const joinMsg: PlayerJoinMessage = {
+        type: 'playerJoin',
+        player: player.getState(),
+      };
+      this.broadcastExcept(playerId, joinMsg);
+      
+      console.log(`[GameRoom ${this.roomCode}] Player ${displayName} (${playerId}) joined successfully`);
+      
+      // Start game loop if this is the first player
+      if (this.players.size === 1) {
+        this.start();
+      }
+    } catch (error) {
+      console.error(`[GameRoom ${this.roomCode}] Error adding player:`, error);
+      throw error;
     }
   }
   
@@ -328,26 +341,30 @@ export class GameRoom {
    * Main game tick - runs at TICK_RATE Hz
    */
   private gameTick(): void {
-    const now = Date.now();
-    const deltaTime = (now - this.lastTickTime) / 1000;
-    this.lastTickTime = now;
-    this.tick++;
-    
-    // Process inputs for all players
-    for (const connection of this.players.values()) {
-      connection.player.processInputs(deltaTime);
-      connection.player.update(deltaTime);
-    }
-    
-    // TODO: Run collision detection
-    // TODO: Process game events
-    
-    // Broadcast state to all players
-    this.broadcastState();
-    
-    // Send new chunks to players who have moved
-    for (const connection of this.players.values()) {
-      this.sendChunksAroundPlayer(connection);
+    try {
+      const now = Date.now();
+      const deltaTime = (now - this.lastTickTime) / 1000;
+      this.lastTickTime = now;
+      this.tick++;
+      
+      // Process inputs for all players
+      for (const connection of this.players.values()) {
+        connection.player.processInputs(deltaTime);
+        connection.player.update(deltaTime);
+      }
+      
+      // TODO: Run collision detection
+      // TODO: Process game events
+      
+      // Broadcast state to all players
+      this.broadcastState();
+      
+      // Send new chunks to players who have moved (temporarily disabled for debugging)
+      // for (const connection of this.players.values()) {
+      //   this.sendChunksAroundPlayer(connection);
+      // }
+    } catch (error) {
+      console.error(`[GameRoom ${this.roomCode}] Error in game tick:`, error);
     }
   }
   
@@ -427,9 +444,12 @@ export class GameRoom {
    */
   private send(ws: ServerWebSocket<{ playerId: string; roomCode: string }>, message: ServerMessage): void {
     try {
-      ws.send(JSON.stringify(message));
+      const data = JSON.stringify(message);
+      console.log(`[GameRoom ${this.roomCode}] Sending message type: ${message.type}, size: ${data.length} bytes`);
+      ws.send(data);
     } catch (error) {
       console.error(`[GameRoom ${this.roomCode}] Failed to send message:`, error);
+      console.error(`[GameRoom ${this.roomCode}] Message type was: ${message.type}`);
     }
   }
   

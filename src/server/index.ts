@@ -156,17 +156,22 @@ const server = Bun.serve<WebSocketData>({
   
   websocket: {
     open(ws) {
-      const data = ws.data as WebSocketData & { displayName?: string };
-      const displayName = data.displayName || 'Player';
-      
-      console.log(`[Server] WebSocket opened for player ${data.playerId}`);
-      
-      // Get or create room
-      const room = getOrCreateRoom(data.roomCode || undefined);
-      data.roomCode = room.roomCode;
-      
-      // Add player to room
-      room.addPlayer(ws, data.playerId, displayName);
+      try {
+        const data = ws.data as WebSocketData & { displayName?: string };
+        const displayName = data.displayName || 'Player';
+        
+        console.log(`[Server] WebSocket opened for player ${data.playerId}`);
+        
+        // Get or create room
+        const room = getOrCreateRoom(data.roomCode || undefined);
+        data.roomCode = room.roomCode;
+        
+        // Add player to room
+        room.addPlayer(ws, data.playerId, displayName);
+        console.log(`[Server] Player ${data.playerId} added to room ${room.roomCode}`);
+      } catch (error) {
+        console.error('[Server] Error in websocket open handler:', error);
+      }
     },
     
     message(ws, message) {
