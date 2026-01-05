@@ -1,0 +1,12 @@
+procs:
+  client:
+    cmd: ["npm", "run", "dev"]
+    cwd: "."
+    stop: "SIGTERM"
+
+  server:
+    cmd: ["bun", "run", "--watch", "src/server/index.ts"]
+    cwd: "."
+    stop: "SIGTERM"
+    env:
+      PORT: "3001"
