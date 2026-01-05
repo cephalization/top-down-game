@@ -4,9 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "mprocs",
+    "dev:ui": "vite",
     "dev:server": "bun run --watch src/server/index.ts",
-    "dev:all": "mprocs",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
