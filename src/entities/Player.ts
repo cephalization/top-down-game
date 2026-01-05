@@ -1,9 +1,11 @@
 import { Entity } from './Entity';
 import type { Vector2 } from '../types';
+import type { PlayerInput } from '../shared/protocol';
 import { Vec2 } from '../utils/math';
 
 /**
  * Player entity - controlled by user input
+ * Supports both local input and network reconciliation
  */
 export class Player extends Entity {
   private baseSpeed: number;
@@ -24,6 +26,9 @@ export class Player extends Entity {
 
   // Inventory (simple implementation for future expansion)
   private inventory: string[] = [];
+  
+  // Network player ID (set when in multiplayer)
+  private networkId: string = '';
 
   constructor(position: Vector2, speed: number = 200) {
     super({
@@ -211,5 +216,69 @@ export class Player extends Entity {
    */
   getDirection(): Vector2 {
     return Vec2.clone(this.direction);
+  }
+
+  /**
+   * Apply a network input (for client-side prediction and reconciliation)
+   * Returns the new position after applying the input
+   */
+  applyInput(input: PlayerInput, deltaTime: number): { x: number; y: number } {
+    // Set movement input
+    this.setMovementInput({ x: input.dx, y: input.dy }, input.sprint);
+    
+    // Apply velocity manually (similar to update but without animation)
+    this.position.x += this.velocity.x * deltaTime;
+    this.position.y += this.velocity.y * deltaTime;
+    
+    return {
+      x: this.position.x,
+      y: this.position.y,
+    };
+  }
+
+  /**
+   * Snap to a specific position (used for server reconciliation)
+   */
+  snapToPosition(x: number, y: number): void {
+    this.position.x = x;
+    this.position.y = y;
+  }
+
+  /**
+   * Set player stats from server state
+   */
+  setStats(health: number, maxHealth: number, stamina: number, maxStamina: number): void {
+    this.stats.health = health;
+    this.stats.maxHealth = maxHealth;
+    this.stats.stamina = stamina;
+    this.stats.maxStamina = maxStamina;
+  }
+
+  /**
+   * Set network player ID
+   */
+  setNetworkId(id: string): void {
+    this.networkId = id;
+  }
+
+  /**
+   * Get network player ID
+   */
+  getNetworkId(): string {
+    return this.networkId;
+  }
+
+  /**
+   * Get base speed
+   */
+  getBaseSpeed(): number {
+    return this.baseSpeed;
+  }
+
+  /**
+   * Get sprint multiplier
+   */
+  getSprintMultiplier(): number {
+    return this.sprintMultiplier;
   }
 }
