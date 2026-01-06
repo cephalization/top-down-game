@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import type { Game } from '../game/Game';
+import type { GameInstance } from './GameCanvas';
 
 interface HUDProps {
-  game: Game | null;
+  game: GameInstance | null;
 }
 
 /**

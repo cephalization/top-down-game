@@ -26,6 +26,11 @@ export interface DebugStats {
   zoom: number;
   viewportWidth: number;
   viewportHeight: number;
+  
+  // Network (optional)
+  rtt?: number;
+  pendingInputs?: number;
+  remotePlayers?: number;
 }
 
 /**
